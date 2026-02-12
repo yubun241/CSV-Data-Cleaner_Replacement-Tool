@@ -1,71 +1,132 @@
 import pandas as pd
 import numpy as np
 from pathlib import Path
+from datetime import datetime
+import shutil  # ファイル移動（切り取り）に使用
 
 # ==========================================
-# 1. パスの設定 (相対パス)
+# 1. 設定項目
 # ==========================================
-# このプログラムがある場所を基準にする
-BASE_DIR = Path(__file__).parent
+NOW = datetime.now()
+STR_YEAR_MONTH = NOW.strftime('%Y%m')
+STR_YEAR_SLASH_MONTH = NOW.strftime('%Y/%m')
 
-SOURCE_NORMAL = BASE_DIR / "../data"      # 通常チェック元
-SOURCE_ERROR  = BASE_DIR / "../dataerror"   # エラー救済元
-DEST_DIR      = BASE_DIR / "../data"        # 出力先（共通）
-
-# 設定
 ENCODING = 'UTF-8'
 REPLACE_TARGET = 'BURNOUT'
 
+# 処理対象の設定を1つに統合
+# move_from: 救済元（ここからファイルを「移動」させる）
+# base: 最終的な保存先（ここで一括置換処理を行う）
+TARGET_CONFIGS = [
+    {
+        "name": "差圧 上2工場",
+        "move_from": f"//10.57.60.62/ftp/MD2KAMI/KEYENCE/DATA/7D5E00/error_bk/",
+        "base": f"//10.57.60.62/ftp/MD2KAMI/KEYENCE/DATA/7D5E00/{STR_YEAR_SLASH_MONTH}"
+    },
+    {
+        "name": "差圧 上34工場",
+        "move_from": f"//10.57.70.9/ftp/MD34KAMI/KEYENCE/DATA/A2732C/error_bk/",
+        "base": f"//10.57.70.9/ftp/MD34KAMI/KEYENCE/DATA/A2732C/{STR_YEAR_SLASH_MONTH}"
+    },
+    {
+        "name": "APC 上2工場",
+        "move_from": "//10.57.60.62/ftp/MD2KAMI/OMRON/error_bk/",
+        "base": "//10.57.60.62/ftp/MD2KAMI/OMRON"
+    },
+    {
+        "name": "APC 上34工場",
+        "move_from": "//10.57.70.9/ftp/MD34KAMI/OMRON/error_bk/",
+        "base": "//10.57.70.9/ftp/MD34KAMI/OMRON"
+    },
+    {
+        "name": "APC 下2工場",
+        "move_from": "//10.57.60.62/ftp/MD2SHIMO/OMRON/error_bk/",
+        "base": "//10.57.60.62/ftp/MD2SHIMO/OMRON"
+    },
+    {
+        "name": "APC 下34工場",
+        "move_from": "//10.57.70.9/ftp/MD34KAMI/OMRON/error_bk/",
+        "base": "//10.57.70.9/ftp/MD34KAMI/OMRON"
+    },
+    {
+        "name": "差圧 下2工場",
+        "move_from": f"//10.57.60.62/ftp/MD2SHIMO/KEYENCE/DATA/C43F0A/error_bk/",
+        "base": f"//10.57.60.62/ftp/MD2SHIMO/KEYENCE/DATA/C43F0A/{STR_YEAR_SLASH_MONTH}"
+    },
+]
+
 # ==========================================
-# 2. 処理メイン関数
+# 2. 実行関数
 # ==========================================
-def verify_process(src_dir, dest_dir, label):
-    """
-    src_dir 内のCSVを読み込み、BURNOUTを置換して dest_dir へ保存する
-    """
-    print(f"\n--- {label} 開始 ---")
-    
-    # 出力先フォルダがなければ作成
-    dest_dir.mkdir(parents=True, exist_ok=True)
 
-    # ソースフォルダ内のCSVを取得
-    files = list(src_dir.glob("*.csv"))
-
-    if not files:
-        print(f"対象ファイルがありませんでした: {src_dir}")
-        return
-
-    for file_path in files:
-        print(f"処理中: {file_path.name}")
-        try:
-            # 1. 読み込み
-            df = pd.read_csv(file_path, encoding=ENCODING, low_memory=False)
-
-            # 2. 置換 (BURNOUTがなければ何もしない)
-            df_replaced = df.replace(REPLACE_TARGET, np.nan)
-
-            # 3. 保存 (../data フォルダへ)
-            save_path = dest_dir / file_path.name
-            df_replaced.to_csv(save_path, index=False, encoding=ENCODING)
+def move_files_only(configs):
+    """error_bk から通常フォルダへファイルを移動（元の場所からは消える）"""
+    print("=== [STEP 1] ファイル移動（救済処理）開始 ===")
+    for item in configs:
+        src_dir = Path(item["move_from"])
+        dst_dir = Path(item["base"])
+        
+        if not src_dir.exists():
+            print(f"  [Skip] 救済元なし: {src_dir}")
+            continue
             
-            print(f"成功: {save_path}")
+        dst_dir.mkdir(parents=True, exist_ok=True)
+        
+        # 移動元から全CSVを取得
+        files = list(src_dir.glob("*.csv"))
+        if files:
+            print(f"  {item['name']}: {len(files)} 件を移動中...")
+            for f in files:
+                try:
+                    # shutil.move は移動先に同名ファイルがあるとエラーになる場合があるため
+                    # 安全のために移動先のパスを明示
+                    target_path = dst_dir / f.name
+                    # 移動（移動元からは削除される）
+                    shutil.move(str(f), str(target_path))
+                except Exception as e:
+                    print(f"    【移動失敗】 {f.name}: {e}")
+        else:
+            print(f"  {item['name']}: 移動対象なし")
 
-            # 4. 「移動」させる場合（エラーフォルダから消す場合）は以下を有効化
-            # if label == "エラー救済処理":
-            #     file_path.unlink() 
-            #     print(f"移動完了(元ファイルを削除しました): {file_path.name}")
+def process_csv_conversion(configs):
+    """base ディレクトリにある全ファイルを対象に置換処理"""
+    print("\n=== [STEP 2] 置換処理（Pandas）開始 ===")
+    for item in configs:
+        target_dir = Path(item["base"])
+        
+        if not target_dir.exists():
+            continue
 
-        except Exception as e:
-            print(f"【失敗】 {file_path.name}: {e}")
+        files = list(target_dir.glob("*.csv"))
+        if not files:
+            continue
+
+        print(f"  カテゴリ: {item['name']} ({len(files)}件)")
+        for file in files:
+            try:
+                # 読み込み
+                df = pd.read_csv(file, encoding=ENCODING, low_memory=False)
+                
+                # 置換（BURNOUTをNaNへ）
+                df_replaced = df.replace(REPLACE_TARGET, np.nan)
+                
+                # 上書き保存
+                df_replaced.to_csv(file, index=False, encoding=ENCODING)
+                print(f"    処理完了: {file.name}")
+                
+            except Exception as e:
+                print(f"    【エラー】 {file.name}: {e}")
 
 # ==========================================
-# 3. 実行
+# 3. メイン実行
 # ==========================================
 if __name__ == "__main__":
-    # 実行1: 通常フォルダ(datae) -> data
-    verify_process(SOURCE_NORMAL, DEST_DIR, "通常チェック処理")
+    # 1. まず「切り取り」移動を行い、error_bk を空にする
+    move_files_only(TARGET_CONFIGS)
 
-    # 実行2: エラーフォルダ(dataerror) -> data
-    verify_process(SOURCE_ERROR, DEST_DIR, "エラー救済処理")
+    # 2. 移動後のフォルダに対して一括置換を行う
+    process_csv_conversion(TARGET_CONFIGS)
 
-    print("\n検証が完了しました。../data フォルダを確認してください。")
+    print("\n" + "="*30)
+    print(" 全ての処理が正常に終了しました ")
+    print("="*30)
