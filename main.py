@@ -19,39 +19,9 @@ REPLACE_TARGET = 'BURNOUT'
 # base: 最終的な保存先（ここで一括置換処理を行う）
 TARGET_CONFIGS = [
     {
-        "name": "差圧 上2工場",
-        "move_from": f"//10.57.60.62/ftp/MD2KAMI/KEYENCE/DATA/7D5E00/error_bk/",
-        "base": f"//10.57.60.62/ftp/MD2KAMI/KEYENCE/DATA/7D5E00/{STR_YEAR_SLASH_MONTH}"
-    },
-    {
-        "name": "差圧 上34工場",
-        "move_from": f"//10.57.70.9/ftp/MD34KAMI/KEYENCE/DATA/A2732C/error_bk/",
-        "base": f"//10.57.70.9/ftp/MD34KAMI/KEYENCE/DATA/A2732C/{STR_YEAR_SLASH_MONTH}"
-    },
-    {
-        "name": "APC 上2工場",
-        "move_from": "//10.57.60.62/ftp/MD2KAMI/OMRON/error_bk/",
-        "base": "//10.57.60.62/ftp/MD2KAMI/OMRON"
-    },
-    {
-        "name": "APC 上34工場",
-        "move_from": "//10.57.70.9/ftp/MD34KAMI/OMRON/error_bk/",
-        "base": "//10.57.70.9/ftp/MD34KAMI/OMRON"
-    },
-    {
-        "name": "APC 下2工場",
-        "move_from": "//10.57.60.62/ftp/MD2SHIMO/OMRON/error_bk/",
-        "base": "//10.57.60.62/ftp/MD2SHIMO/OMRON"
-    },
-    {
-        "name": "APC 下34工場",
-        "move_from": "//10.57.70.9/ftp/MD34KAMI/OMRON/error_bk/",
-        "base": "//10.57.70.9/ftp/MD34KAMI/OMRON"
-    },
-    {
-        "name": "差圧 下2工場",
-        "move_from": f"//10.57.60.62/ftp/MD2SHIMO/KEYENCE/DATA/C43F0A/error_bk/",
-        "base": f"//10.57.60.62/ftp/MD2SHIMO/KEYENCE/DATA/C43F0A/{STR_YEAR_SLASH_MONTH}"
+        "name": "DATA1",
+        "move_from": f"../error_bk/",
+        "base": f"/DATA/{STR_YEAR_SLASH_MONTH}"
     },
 ]
 
